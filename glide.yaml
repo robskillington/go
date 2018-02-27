@@ -1,0 +1,13 @@
+package: github.com/cw9/go
+
+import:
+- package: google.golang.org/grpc
+  version: v1.9.2
+- package: github.com/m3db/m3cluster
+  version: 39344100c005a8451d2d5b34b4bc48cb670cb74b
+- package: github.com/vmihailenco/msgpack
+  version: v3.2.8
+- package: github.com/gogo/protobuf/proto
+  version: 26de2f9a7d3b1826f275e7a97c8cad5080589426
+- package: github.com/m3db/m3metrics
+  version: 17e4ddf89f2b0c8fbb16b6d5b71a871b793d2a00
