@@ -1,0 +1,26 @@
+syntax = "proto3";
+package topicpb;
+
+message Topic {
+  string name = 1;
+  bool is_sharded = 2;
+  uint32 number_of_shards = 3;
+  HashFunction hash_function = 4;
+  repeated ConsumerService consumer_services = 5;
+}
+
+enum HashFunction {
+  MURMUR32 = 0;
+}
+
+message ConsumerService {
+  string name = 1;
+  string environment = 2;
+  string zone = 3;
+  ConsumptionType consumption_type = 4;
+}
+
+enum ConsumptionType {
+  SHARED = 0;
+  REPLICATED = 1;
+}
