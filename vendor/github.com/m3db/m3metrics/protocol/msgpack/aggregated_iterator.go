@@ -38,6 +38,8 @@ type aggregatedIterator struct {
 	metric              aggregated.RawMetric
 	storagePolicy       policy.StoragePolicy
 	encodedAtNanos      int64
+
+	value []byte
 }
 
 // NewAggregatedIterator creates a new aggregated iterator.
@@ -144,5 +146,26 @@ func (it *aggregatedIterator) decodeRawMetricWithStoragePolicyAndEncodeTime() {
 }
 
 func (it *aggregatedIterator) decodeRawMetric() []byte {
-	return it.decodeBytes()
+	// return it.decodeBytes()
+	return it.decodeBytesZeroAlloc()
+}
+
+func (it *aggregatedIterator) decodeBytesZeroAlloc() []byte {
+	idLen := it.decodeBytesLen()
+	if it.err() != nil {
+		return nil
+	}
+	if idLen == -1 {
+		return nil
+	}
+	if cap(it.value) < idLen {
+		it.value = make([]byte, idLen)
+	} else {
+		it.value = it.value[:idLen]
+	}
+	if _, err := io.ReadFull(it.reader(), it.value); err != nil {
+		it.setErr(err)
+		return nil
+	}
+	return it.value
 }
