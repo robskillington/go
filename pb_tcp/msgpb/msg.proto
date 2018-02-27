@@ -47,3 +47,8 @@ message RawMetric {
   int64 nanos = 2;
   double value = 3;
 }
+
+message UnAggregatedMetric {
+  bytes id = 1;
+  repeated double values = 2;
+}

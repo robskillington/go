@@ -7,6 +7,7 @@ import (
 
 	"github.com/cw9/go/pb_tcp/msgpb"
 	"github.com/m3db/m3metrics/metric/aggregated"
+	"github.com/m3db/m3metrics/metric/unaggregated"
 	"github.com/m3db/m3metrics/policy"
 	"github.com/m3db/m3metrics/protocol/msgpack"
 	xtime "github.com/m3db/m3x/time"
@@ -36,11 +37,12 @@ func BenchmarkRoundTripProtobuf(b *testing.B) {
 		if err := Decode(&decodeMsg, decodeSizeBuffer, decodeDataBuffer, mimicTCP); err != nil {
 			b.FailNow()
 		}
-		if decodeMsg.Offset != int64(n) {
-			b.FailNow()
-		}
+		// if decodeMsg.Offset != int64(n) {
+		// 	b.FailNow()
+		// }
 	}
 }
+
 func BenchmarkRoundTripProtobufWithDecodeMsgpack(b *testing.B) {
 	mimicTCP := bytes.NewBuffer(nil)
 	encodeSizeBuffer := make([]byte, 4)
@@ -75,14 +77,14 @@ func BenchmarkRoundTripProtobufWithDecodeMsgpack(b *testing.B) {
 		if err := Decode(&decodeMsg, decodeSizeBuffer, decodeDataBuffer, mimicTCP); err != nil {
 			b.FailNow()
 		}
-		if decodeMsg.Offset != int64(n) {
-			b.FailNow()
-		}
 		it.Reset(bytes.NewBuffer(decodeMsg.Value))
 		n := it.Next()
 		if !n {
 			b.FailNow()
 		}
+		// if decodeMsg.Offset != int64(n) {
+		// 	b.FailNow()
+		// }
 		// rm, _, _ := it.Value()
 		// m, _ := rm.Metric()
 		// if m.Value != 1 {
@@ -135,13 +137,13 @@ func BenchmarkRoundTripProtobufWithDecodePB(b *testing.B) {
 		if err := Decode(&decodeMsg, decodeSizeBuffer, decodeDataBuffer, mimicTCP); err != nil {
 			b.FailNow()
 		}
-		if decodeMsg.Offset != int64(n) {
-			b.FailNow()
-		}
 		err := decodePb.Unmarshal(decodeMsg.Value)
 		if err != nil {
 			b.FailNow()
 		}
+		// if decodeMsg.Offset != int64(n) {
+		// 	b.FailNow()
+		// }
 		// if string(decodePb.RawMetric.Id) != id {
 		// 	b.FailNow()
 		// }
@@ -176,9 +178,9 @@ func BenchmarkRoundTripProtobufWithMoreFields(b *testing.B) {
 		if err := Decode(&decodeMsg, decodeSizeBuffer, decodeDataBuffer, mimicTCP); err != nil {
 			b.FailNow()
 		}
-		if decodeMsg.Offset1 != int64(n) {
-			b.FailNow()
-		}
+		// if decodeMsg.Offset1 != int64(n) {
+		// 	b.FailNow()
+		// }
 	}
 }
 
@@ -214,9 +216,9 @@ func BenchmarkAggregatedMetricRoundTripInProtobuf(b *testing.B) {
 		if err != nil {
 			b.FailNow()
 		}
-		if string(decodePb.RawMetric.Id) != id {
-			b.FailNow()
-		}
+		// if string(decodePb.RawMetric.Id) != id {
+		// 	b.FailNow()
+		// }
 	}
 }
 
@@ -241,11 +243,69 @@ func BenchmarkAggregatedMetricRoundTripInMsgpack(b *testing.B) {
 		if !n {
 			b.FailNow()
 		}
-		rm, _, _ := it.Value()
-		m, _ := rm.Metric()
-		if string(m.ID) != id {
+		enc.Encoder().Buffer().Reset()
+		// rm, _, _ := it.Value()
+		// m, _ := rm.Metric()
+		// // if string(m.ID) != id {
+		// 	b.FailNow()
+		// }
+	}
+}
+
+func BenchmarkUnaggregatedMetricRoundTripInProtobuf(b *testing.B) {
+	values := make([]float64, 140)
+	for i := 0; i < 140; i++ {
+		values[i] = float64(i + 10000000)
+	}
+	encodePb := msgpb.UnAggregatedMetric{
+		Id:     []byte(id),
+		Values: values,
+	}
+	decodePb := msgpb.UnAggregatedMetric{}
+
+	bytes := make([]byte, 2048)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		size, err := encodePb.MarshalTo(bytes)
+		if err != nil {
+			b.FailNow()
+		}
+		err = decodePb.Unmarshal(bytes[:size])
+		if err != nil {
+			b.FailNow()
+		}
+		// if string(decodePb.Id) != id {
+		// 	b.FailNow()
+		// }
+	}
+}
+
+func BenchmarkUnaggregatedMetricRoundTripInMsgpack(b *testing.B) {
+	values := make([]float64, 140)
+	for i := 0; i < 140; i++ {
+		values[i] = float64(i + 10000000)
+	}
+	enc := msgpack.NewUnaggregatedEncoder(msgpack.NewBufferedEncoder())
+	it := msgpack.NewUnaggregatedIterator(nil, nil)
+	bt := unaggregated.BatchTimer{
+		ID:     []byte(id),
+		Values: values,
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		enc.EncodeBatchTimer(bt)
+		it.Reset(enc.Encoder().Buffer())
+		n := it.Next()
+		if !n {
 			b.FailNow()
 		}
 		enc.Encoder().Buffer().Reset()
+
+		// mu := it.Metric()
+		// if string(mu.ID) != id {
+		// 	b.FailNow()
+		// }
 	}
 }

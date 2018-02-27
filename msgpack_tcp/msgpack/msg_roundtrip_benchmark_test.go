@@ -38,7 +38,10 @@ func BenchmarkRoundTripMsgpack(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		encoder.EncodeMsg(m)
 		iterator.Reset(encoder.Encoder().Buffer())
-		iterator.Next()
+		n := iterator.Next()
+		if !n {
+			b.FailNow()
+		}
 		encoder.Encoder().Reset()
 	}
 }
