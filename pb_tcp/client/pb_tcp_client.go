@@ -18,7 +18,7 @@ import (
 const (
 	defaultAddress     = "0.0.0.0:50051"
 	defaultPayloadSize = 200
-	defaultNumOfMsgs   = 1000000
+	defaultNumMsgs     = 1000000
 	defaultNumConns    = 10
 	defaultBufSize     = 16384
 )
@@ -26,7 +26,7 @@ const (
 var (
 	address     = flag.String("address", defaultAddress, "server address")
 	payloadSize = flag.Int64("payloadSize", defaultPayloadSize, "payload size")
-	numOfMsgs   = flag.Int64("numOfMsgs", defaultNumOfMsgs, "number of messages")
+	numMsgs     = flag.Int64("numMsgs", defaultNumMsgs, "number of messages")
 	receiveAck  = flag.Bool("receiveAck", false, "should receive acks")
 	cpuprofile  = flag.String("cpu", "", "write cpu profile to file")
 	numConns    = flag.Int64("numConns", defaultNumConns, "number of connections")
@@ -92,7 +92,7 @@ func sendMsgs(conn net.Conn) {
 
 	start := time.Now()
 	last := start
-	for id < *numOfMsgs {
+	for id < *numMsgs {
 		id++
 		msg.Offset = id
 		if err := pb_tcp.Encode(&msg, sizeBuffer, dataBuffer, w); err != nil {
@@ -103,7 +103,7 @@ func sendMsgs(conn net.Conn) {
 			log.Println("sent", id, now.Sub(last))
 			last = now
 		}
-		if id == *numOfMsgs {
+		if id == *numMsgs {
 			break
 		}
 	}
@@ -128,12 +128,12 @@ func receiveAcks(conn net.Conn, wg *sync.WaitGroup) {
 		if err := pb_tcp.Decode(&ack, sizeBuffer, dataBuffer, r); err != nil {
 			log.Fatal(err.Error())
 		}
-		if ack.Offset%(*numOfMsgs/10) == 0 {
+		if ack.Offset%(*numMsgs/10) == 0 {
 			now := time.Now()
 			log.Println("ack", ack.Offset, now.Sub(last))
 			last = now
 		}
-		if ack.Offset == *numOfMsgs {
+		if ack.Offset == *numMsgs {
 			break
 		}
 	}

@@ -16,7 +16,7 @@ import (
 
 const (
 	defaultAddress     = "0.0.0.0:50051"
-	defaultNumOfMsgs   = 1000000
+	defaultNumMsgs     = 1000000
 	defaultPayloadSize = 200
 	defaultNumConns    = 10
 	defaultBufSize     = 16384
@@ -25,7 +25,7 @@ const (
 var (
 	address     = flag.String("address", defaultAddress, "server address")
 	payloadSize = flag.Int64("payloadSize", defaultPayloadSize, "payload size")
-	numOfMsgs   = flag.Int64("numOfMsgs", defaultNumOfMsgs, "number of messages")
+	numMsgs     = flag.Int64("numMsgs", defaultNumMsgs, "number of messages")
 	cpuprofile  = flag.String("cpu", "", "write cpu profile to file")
 	receiveAck  = flag.Bool("receiveAck", false, "should receive acks")
 	numConns    = flag.Int64("numConns", defaultNumConns, "number of connections")
@@ -86,7 +86,7 @@ func sendMsgs(conn net.Conn) {
 
 	log.Printf("start sending msgs")
 	start := time.Now()
-	for id <= *numOfMsgs {
+	for id <= *numMsgs {
 		id++
 		m := msgpack.Msg{
 			Offset: id,
@@ -124,12 +124,12 @@ func receiveAcks(conn net.Conn, wg *sync.WaitGroup) {
 			break
 		}
 		ack := it.Ack()
-		if ack.Offset%(*numOfMsgs/10) == 0 {
+		if ack.Offset%(*numMsgs/10) == 0 {
 			now := time.Now()
 			log.Println("ack", ack.Offset, now.Sub(last))
 			last = now
 		}
-		if ack.Offset == *numOfMsgs {
+		if ack.Offset == *numMsgs {
 			break
 		}
 	}
