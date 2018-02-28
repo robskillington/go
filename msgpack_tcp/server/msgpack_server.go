@@ -41,8 +41,8 @@ func main() {
 
 func process(conn net.Conn, shouldAck bool) error {
 	var (
-		r          = bufio.NewReaderSize(conn, 1024)
-		w          = bufio.NewWriterSize(conn, 1024)
+		r          = bufio.NewReaderSize(conn, 16384)
+		w          = bufio.NewWriterSize(conn, 16384)
 		it         = msgpack.NewMsgIterator(r, nil)
 		ackEncoder = msgpack.NewAckEncoder(msgpack.NewBufferedEncoder())
 	)

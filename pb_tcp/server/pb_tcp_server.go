@@ -44,8 +44,8 @@ func main() {
 func process(conn net.Conn, shouldAck bool) {
 	log.Println("processing a new connection")
 	var (
-		r          = bufio.NewReaderSize(conn, 1024)
-		w          = bufio.NewWriterSize(conn, 1024)
+		r          = bufio.NewReaderSize(conn, 16384)
+		w          = bufio.NewWriterSize(conn, 16384)
 		sizeBytes  = make([]byte, 4)
 		dataBuffer = make([]byte, 20480)
 		msg        msgpb.Message

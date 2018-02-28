@@ -5,6 +5,8 @@ import (
 	"flag"
 	"log"
 	"net"
+	"os"
+	"runtime/pprof"
 	"sync"
 	"time"
 
@@ -16,7 +18,9 @@ import (
 const (
 	defaultAddress     = "0.0.0.0:50051"
 	defaultPayloadSize = 200
-	defaultNumOfMsgs   = 10000000
+	defaultNumOfMsgs   = 1000000
+	defaultNumConns    = 10
+	defaultBufSize     = 16384
 )
 
 var (
@@ -24,31 +28,58 @@ var (
 	payloadSize = flag.Int64("payloadSize", defaultPayloadSize, "payload size")
 	numOfMsgs   = flag.Int64("numOfMsgs", defaultNumOfMsgs, "number of messages")
 	receiveAck  = flag.Bool("receiveAck", false, "should receive acks")
+	cpuprofile  = flag.String("cpu", "", "write cpu profile to file")
+	numConns    = flag.Int64("numConns", defaultNumConns, "number of connections")
+	bufSize     = flag.Int64("bufSize", defaultBufSize, "default buffer size")
 )
 
 func main() {
 	flag.Parse()
 
-	conn, err := net.Dial("tcp", *address)
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+	var conns []net.Conn
+	for i := int64(0); i < *numConns; i++ {
+		conn, err := net.Dial("tcp", *address)
+		if err != nil {
+			log.Fatalf("did not connect: %v", err)
+		}
+		conns = append(conns, conn)
+		defer conn.Close()
 	}
-	defer conn.Close()
 
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatalf("could not open pprof file, %v", err)
+		}
+		log.Printf("CPU profile will output to %s", f.Name())
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
+
+	start := time.Now()
 	var wg sync.WaitGroup
-	if *receiveAck {
+	for _, conn := range conns {
+		conn := conn
+		if *receiveAck {
+			log.Println("reiceiving acks")
+			wg.Add(1)
+			go receiveAcks(conn, &wg)
+		}
+
 		wg.Add(1)
-		go receiveAcks(conn, &wg)
+		go func() {
+			sendMsgs(conn)
+			wg.Done()
+		}()
 	}
 
-	sendMsgs(conn)
 	wg.Wait()
-
+	log.Println("total time for sending messages", time.Now().Sub(start))
 }
 
 func sendMsgs(conn net.Conn) {
 	var (
-		w          = bufio.NewWriterSize(conn, 1024)
+		w          = bufio.NewWriterSize(conn, int(*bufSize))
 		id         = int64(0)
 		dataBuffer = make([]byte, 20480)
 		sizeBuffer = make([]byte, 4)
@@ -84,9 +115,9 @@ func sendMsgs(conn net.Conn) {
 
 func receiveAcks(conn net.Conn, wg *sync.WaitGroup) {
 	var (
-		r          = bufio.NewReaderSize(conn, 1024)
+		r          = bufio.NewReaderSize(conn, int(*bufSize))
 		sizeBuffer = make([]byte, 4)
-		dataBuffer = make([]byte, 1024)
+		dataBuffer = make([]byte, 20480)
 		ack        msgpb.Ack
 	)
 
@@ -97,7 +128,7 @@ func receiveAcks(conn net.Conn, wg *sync.WaitGroup) {
 		if err := pb_tcp.Decode(&ack, sizeBuffer, dataBuffer, r); err != nil {
 			log.Fatal(err.Error())
 		}
-		if ack.Offset%1000000 == 0 {
+		if ack.Offset%(*numOfMsgs/10) == 0 {
 			now := time.Now()
 			log.Println("ack", ack.Offset, now.Sub(last))
 			last = now
